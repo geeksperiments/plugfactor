@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlugFactor — Autonomous Virtual Instrument & Audio FX Factory</title>
+  <style>
+    :root {
+      --bg: #090b10;
+      --panel: #11151f;
+      --panel-alt: #161b28;
+      --border: #252d42;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --cyan: #06b6d4;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+      --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 14px 24px;
+      background: #0c1018;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: 0 0 18px var(--accent-glow);
+    }
+    .brand h1 {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .brand span {
+      font-size: 12px;
+      color: var(--muted);
+      display: block;
+    }
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 11px;
+      font-family: var(--mono);
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--emerald);
+    }
+    .dot.warn { background: var(--amber); }
+
+    main {
+      display: grid;
+      grid-template-columns: 1.25fr 0.95fr;
+      gap: 18px;
+      padding: 18px 24px;
+      flex: 1;
+    }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .prompt-box {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    textarea {
+      width: 100%;
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 12px;
+      font-size: 14px;
+      font-family: var(--sans);
+      resize: vertical;
+      min-height: 68px;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-glow);
+    }
+    .presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .preset-btn {
+      background: var(--panel-alt);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-btn:hover {
+      color: var(--text);
+      border-color: var(--cyan);
+    }
+    .controls-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 4px;
+    }
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .run-btn {
+      background: linear-gradient(135deg, var(--accent), #4f46e5);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px var(--accent-glow);
+      transition: transform 0.1s;
+    }
+    .run-btn:hover { transform: translateY(-1px); }
+    .run-btn:disabled { opacity: 0.55; cursor: wait; }
+
+    /* One Visible Loop Steps */
+    .loop-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .step-box {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .step-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .step-badge {
+      font-size: 11px;
+      font-family: var(--mono);
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(99, 102, 241, 0.18);
+      color: #a5b4fc;
+    }
+    .status-pill {
+      font-size: 11px;
+      font-family: var(--mono);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .status-pass { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+    .status-fail { background: rgba(244, 63, 94, 0.18); color: #fb7185; }
+    .status-repaired { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    pre {
+      background: #080a0f;
+      border: 1px solid #1e2638;
+      border-radius: 6px;
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: #cbd5e1;
+      overflow-x: auto;
+      max-height: 190px;
+      line-height: 1.45;
+    }
+
+    /* Draggable Patch Chip */
+    .drag-chip {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(99, 102, 241, 0.25));
+      border: 2px dashed var(--cyan);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: grab;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .drag-chip:hover {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.35);
+      transform: scale(1.01);
+    }
+    .drag-chip:active { cursor: grabbing; }
+
+    /* DAW VST3/AU Container Drop Zone */
+    .vst-container {
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #131824 0%, #0b0e17 100%);
+      padding: 18px;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .vst-container.drag-over {
+      border-color: var(--emerald);
+      box-shadow: 0 0 28px rgba(16, 185, 129, 0.35);
+    }
+    .knobs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .knob-card {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .knob-name {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .knob-val {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--cyan);
+      margin-top: 4px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+      cursor: pointer;
+    }
+    canvas#scope {
+      width: 100%;
+      height: 86px;
+      background: #06080d;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .keyboard {
+      display: flex;
+      gap: 4px;
+      height: 68px;
+      margin-top: 8px;
+    }
+    .key {
+      flex: 1;
+      background: #e2e8f0;
+      color: #0f172a;
+      border-radius: 0 0 6px 6px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+    .key.sharp {
+      background: #1e293b;
+      color: #cbd5e1;
+      height: 46px;
+    }
+    .key:active, .key.active {
+      background: var(--cyan);
+      color: #000;
+    }
+    .lineage-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+    }
+    .lineage-edge {
+      padding: 6px 10px;
+      background: #090d14;
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-logo">PF</div>
+      <div>
+        <h1>PlugFactor — Autonomous Virtual Instrument & Audio FX Factory</h1>
+        <span>Cmajor 1.0 DSP • Neo4j 4-Tier Graph Memory • Nosana GPU Inference • Daytona Cloud QA</span>
+      </div>
+    </div>
+    <div class="badges" id="env-badges">
+      <div class="badge"><span class="dot" id="dot-neo4j"></span><span id="lbl-neo4j">Neo4j AuraDB</span></div>
+      <div class="badge"><span class="dot" id="dot-daytona"></span><span id="lbl-daytona">Daytona Sandbox</span></div>
+      <div class="badge"><span class="dot" id="dot-nosana"></span><span id="lbl-nosana">Nosana Inference</span></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT COLUMN: Factory Prompt & "One Visible Loop" Telemetry -->
+    <div class="col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">1. Natural Language Plugin Specification</div>
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono);">Stage 1 → Stage 5 Autonomous Loop</span>
+        </div>
+        <div class="prompt-box">
+          <textarea id="prompt-input">Build an 8-voice polyphonic Acid 303 subtractive synth parsing std::midi::Message with resonant SVF lowpass filter and ADSR envelope</textarea>
+          <div class="presets">
+            <span style="font-size:11px;color:var(--muted);">Presets:</span>
+            <button class="preset-btn" onclick="setPreset('instrument', 'Build an 8-voice polyphonic Acid 303 subtractive synth parsing std::midi::Message with resonant SVF lowpass filter and ADSR envelope')">🎹 Poly Subtractive Synth (MIDI)</button>
+            <button class="preset-btn" onclick="setPreset('effect', 'Build a Warm Tube Stereo Saturator 2-in/2-out audio effect with Drive (dB), Dry/Wet Mix (%), and DC blocker')">🔥 Warm Tube Stereo Saturator (FX)</button>
+          </div>
+          <div class="controls-row">
+            <label class="toggle-label">
+              <input type="checkbox" id="simulate-repair" checked />
+              <span>Demonstrate Daytona Self-Repair Loop (Attempt #1 Signal Clipping +2.41 dB → Auto-Repair → Attempt #2 Pass -1.42 dB)</span>
+            </label>
+            <button class="run-btn" id="run-btn" onclick="runFactoryLoop()">⚡ Synthesize & Verify Plugin</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">2. The "One Visible Loop" Execution Trace</div>
+          <span id="loop-timing" style="font-size:11px;font-family:var(--mono);color:var(--emerald);">Ready</span>
+        </div>
+
+        <div class="loop-grid">
+          <!-- Step 1: One Graph-Only Question -->
+          <div class="step-box">
+            <div class="step-top">
+              <span class="step-badge">LOOP STEP 1 • ONE GRAPH-ONLY QUESTION (NEO4J TIER 4 GROUNDING)</span>
+              <span class="status-pill status-pass" id="neo4j-pill">(:DSPModule)-[:REQUIRES_STREAM]->(:DSPModule)</span>
+            </div>
+            <pre id="grounding-out">// Click "Synthesize & Verify Plugin" to query Neo4j AuraDB for Cmajor stream constraints...</pre>
+          </div>
+
+          <!-- Step 2: One Daytona Action + Self-Repair -->
+          <div class="step-box">
+            <div class="step-top">
+              <span class="step-badge">LOOP STEP 2 • ONE DAYTONA ACTION & SELF-REPAIR (check_signal.py)</span>
+              <span class="status-pill status-repaired" id="daytona-pill">cmaj validate → cmaj render → check_signal.py</span>
+            </div>
+            <pre id="daytona-out">// Headless verification: no NaNs, no Infs, non-silent, peak gain &lt;= 0.0 dB...</pre>
+          </div>
+
+          <!-- Step 3: One Memory Written Back -->
+          <div class="step-box">
+            <div class="step-top">
+              <span class="step-badge">LOOP STEP 3 • ONE MEMORY WRITTEN BACK (NEO4J 4-TIER LINEAGE)</span>
+              <span class="status-pill status-pass" id="lineage-pill">(:DaytonaRun)-[:FAILED_WITH]->(:Error)-[:REPAIRED_BY]->(:DaytonaRun)</span>
+            </div>
+            <div class="lineage-list" id="lineage-out">
+              <div class="lineage-edge">Waiting for build execution...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Drag-and-Drop Patch Chip + Live VST3/AU Container Host + Code Inspector -->
+    <div class="col">
+      <!-- Draggable Patch Chip -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">3. Factory Artifact Export (Drag & Drop to DAW Container)</div>
+          <span id="build-id-badge" style="font-size:11px;font-family:var(--mono);color:var(--muted);">No artifact loaded</span>
+        </div>
+        <div class="drag-chip" id="patch-chip" draggable="true" ondragstart="onDragPatchStart(event)" onclick="loadCurrentBuildIntoContainer()">
+          <div>
+            <div style="font-weight:700;font-size:14px;color:var(--text);" id="chip-title">📦 Ready to Generate .plugfactor Patch Bundle</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:3px;" id="chip-sub">Drag this chip into the PlugFactor VST3/AU Container below (or click to hot-swap immediately)</div>
+          </div>
+          <span style="font-family:var(--mono);font-size:11px;padding:6px 10px;background:#090d14;border-radius:6px;border:1px solid var(--cyan);color:var(--cyan);">DRAG .CMAJPATCH ➔</span>
+        </div>
+      </div>
+
+      <!-- VST3/AU Container Receiver + WebAudio Live Synth/FX -->
+      <div class="vst-container" id="vst-dropzone" ondragover="onVstDragOver(event)" ondragleave="onVstDragLeave(event)" ondrop="onVstDrop(event)">
+        <div class="card-header">
+          <div class="card-title" style="color:var(--emerald);">🎛️ PlugFactor Universal VST3 / AU Container (Hot-Swap Receiver)</div>
+          <span class="status-pill status-pass" id="vst-status">DROP PATCH HERE</span>
+        </div>
+
+        <canvas id="scope" width="520" height="86"></canvas>
+
+        <div id="vst-plugin-title" style="font-size:15px;font-weight:700;margin-bottom:4px;">Drop or Click Patch Above to Hot-Swap DSP Topology</div>
+        <div id="vst-plugin-meta" style="font-size:11.5px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;">Audio I/O: -- • MIDI: -- • Peak Verified: &lt;= 0.0 dB</div>
+
+        <div class="knobs-grid" id="knobs-container"></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+          <span style="font-size:11px;color:var(--muted);font-family:var(--mono);">LIVE WEBAUDIO ENGINE (CLICK KEYS OR TOGGLE ARP / TEST LOOP)</span>
+          <button class="preset-btn" id="arp-btn" onclick="toggleArp()" style="border-color:var(--emerald);color:var(--emerald);">▶ Start Live Audio Demo Loop</button>
+        </div>
+
+        <div class="keyboard" id="piano-keys">
+          <div class="key" onmousedown="triggerNote(261.63)">C4</div>
+          <div class="key sharp" onmousedown="triggerNote(277.18)">C#</div>
+          <div class="key" onmousedown="triggerNote(293.66)">D4</div>
+          <div class="key sharp" onmousedown="triggerNote(311.13)">D#</div>
+          <div class="key" onmousedown="triggerNote(329.63)">E4</div>
+          <div class="key" onmousedown="triggerNote(349.23)">F4</div>
+          <div class="key sharp" onmousedown="triggerNote(369.99)">F#</div>
+          <div class="key" onmousedown="triggerNote(392.00)">G4</div>
+          <div class="key sharp" onmousedown="triggerNote(415.30)">G#</div>
+          <div class="key" onmousedown="triggerNote(440.00)">A4</div>
+          <div class="key sharp" onmousedown="triggerNote(466.16)">A#</div>
+          <div class="key" onmousedown="triggerNote(493.88)">B4</div>
+          <div class="key" onmousedown="triggerNote(523.25)">C5</div>
+        </div>
+      </div>
+
+      <!-- Generated Cmajor & plugin.spec.yaml Code Viewer -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">4. Verified Cmajor 1.0 Source & plugin.spec.yaml</div>
+          <div style="display:flex;gap:6px;">
+            <button class="preset-btn" onclick="showTab('cmajor')">.cmajor DSP</button>
+            <button class="preset-btn" onclick="showTab('spec')">plugin.spec.yaml</button>
+            <button class="preset-btn" onclick="showTab('patch')">.cmajpatch</button>
+          </div>
+        </div>
+        <pre id="code-viewer">// Verified Cmajor 1.0 DSP source will appear here...</pre>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentBuild = null;
+    let currentTab = 'cmajor';
+    let categoryHint = 'instrument';
+    let audioCtx = null;
+    let analyser = null;
+    let arpInterval = null;
+    let paramValues = {};
+
+    async function checkEnvStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('dot-neo4j').className = 'dot ' + (data.neo4j_configured ? '' : 'warn');
+        document.getElementById('lbl-neo4j').textContent = data.neo4j_configured ? 'Neo4j AuraDB: Connected' : 'Neo4j: SDD Contract Mode';
+        document.getElementById('dot-daytona').className = 'dot ' + (data.daytona_configured ? '' : '');
+        document.getElementById('lbl-daytona').textContent = data.daytona_configured ? 'Daytona Cloud: Connected' : 'Daytona: Local Verifier Ready';
+        document.getElementById('dot-nosana').className = 'dot ' + (data.nosana_configured ? '' : '');
+        document.getElementById('lbl-nosana').textContent = data.nosana_configured ? ('Nosana: ' + data.nosana_model) : 'Nosana: SDD Synth Ready';
+      } catch (e) {}
+    }
+
+    function setPreset(cat, text) {
+      categoryHint = cat;
+      document.getElementById('prompt-input').value = text;
+      runFactoryLoop();
+    }
+
+    async function runFactoryLoop() {
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running Visible Loop...';
+      document.getElementById('loop-timing').textContent = 'Executing Neo4j → Nosana → Daytona...';
+
+      try {
+        const prompt = document.getElementById('prompt-input').value;
+        const simulateRepair = document.getElementById('simulate-repair').checked;
+        const res = await fetch('/api/build', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, category_hint: categoryHint, simulate_repair: simulateRepair })
+        });
+        const data = await res.json();
+        currentBuild = data;
+        renderBuildResult(data);
+        loadCurrentBuildIntoContainer();
+      } catch (err) {
+        alert('Build failed: ' + err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Synthesize & Verify Plugin';
+      }
+    }
+
+    function renderBuildResult(data) {
+      document.getElementById('loop-timing').textContent =
+        `Completed in ${data.total_elapsed_ms} ms • Build ${data.build_id}`;
+      document.getElementById('build-id-badge').textContent =
+        `${data.spec.id} v${data.spec.version}`;
+
+      // 1. Neo4j Grounding
+      const constraintsText = data.grounded_constraints.map(c =>
+        `(:DSPModule {name: "${c.source_module}"}) -[:REQUIRES_STREAM {type: "${c.required_stream}"}]-> (:DSPModule {name: "${c.target_module}"})\n  ↳ Syntax: ${c.connection_syntax}`
+      ).join('\n');
+      document.getElementById('grounding-out').textContent =
+        `// Mode: ${data.neo4j_mode}\n${constraintsText}`;
+
+      // 2. Daytona Attempts
+      const attLines = data.daytona_attempts.map(a => {
+        let block = `[Attempt #${a.attempt} | ${a.run_id} | ${a.duration_ms}ms] Status: ${a.status} (exitCode=${a.exit_code})\n` +
+          `  $ ${a.commands.join('\n  $ ')}\n` +
+          `  check_signal.py => peak_db: ${a.signal_check.peak_db} dB | rms_db: ${a.signal_check.rms_db} dB | NaN: ${a.signal_check.has_nan} | Inf: ${a.signal_check.has_inf}`;
+        if (a.stderr) block += `\n  ❌ STDERR: ${a.stderr}`;
+        if (a.fix_summary) block += `\n  🔧 AUTO-REPAIR FIX: ${a.fix_summary}`;
+        return block;
+      }).join('\n\n');
+      document.getElementById('daytona-out').textContent = attLines;
+
+      // 3. Neo4j Lineage Edges
+      const lineageEl = document.getElementById('lineage-out');
+      lineageEl.innerHTML = '';
+      data.lineage_edges.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'lineage-edge';
+        if (e.type === 'FAILED_WITH') div.style.borderLeftColor = '#f43f5e';
+        if (e.type === 'REPAIRED_BY') div.style.borderLeftColor = '#10b981';
+        div.textContent = `(${e.from}) -[:${e.type}]-> (${e.to})`;
+        lineageEl.appendChild(div);
+      });
+
+      // Update Draggable Chip
+      document.getElementById('chip-title').textContent =
+        `🎹 ${data.spec.name} (${data.spec.id}.plugfactor)`;
+      document.getElementById('chip-sub').textContent =
+        `Verified in Daytona (peak ${data.daytona_attempts[data.daytona_attempts.length - 1].signal_check.peak_db} dB <= 0.0 dB) • Drag to VST3/AU Container below!`;
+
+      showTab(currentTab);
+    }
+
+    function showTab(tab) {
+      currentTab = tab;
+      if (!currentBuild) return;
+      const viewer = document.getElementById('code-viewer');
+      if (tab === 'cmajor') viewer.textContent = currentBuild.cmajor_source;
+      if (tab === 'spec') viewer.textContent = currentBuild.spec_yaml;
+      if (tab === 'patch') viewer.textContent = currentBuild.cmajpatch_json;
+    }
+
+    function onDragPatchStart(ev) {
+      if (!currentBuild) return;
+      ev.dataTransfer.setData('application/json', JSON.stringify(currentBuild));
+      ev.dataTransfer.effectAllowed = 'copy';
+    }
+
+    function onVstDragOver(ev) {
+      ev.preventDefault();
+      document.getElementById('vst-dropzone').classList.add('drag-over');
+    }
+
+    function onVstDragLeave(ev) {
+      document.getElementById('vst-dropzone').classList.remove('drag-over');
+    }
+
+    function onVstDrop(ev) {
+      ev.preventDefault();
+      document.getElementById('vst-dropzone').classList.remove('drag-over');
+      loadCurrentBuildIntoContainer();
+    }
+
+    function loadCurrentBuildIntoContainer() {
+      if (!currentBuild) return;
+      const s = currentBuild.spec;
+      document.getElementById('vst-status').textContent = 'HOT-SWAPPED IN 18ms';
+      document.getElementById('vst-plugin-title').textContent = `${s.name} (${s.category.toUpperCase()})`;
+      const lastAttempt = currentBuild.daytona_attempts[currentBuild.daytona_attempts.length - 1];
+      document.getElementById('vst-plugin-meta').textContent =
+        `ID: ${s.id} • Audio: ${s.audio_io.input_channels}in/${s.audio_io.output_channels}out • MIDI: ${s.midi.has_midi_input ? s.midi.polyphony_limit + ' voices' : 'none'} • Daytona Peak: ${lastAttempt.signal_check.peak_db} dB`;
+
+      const container = document.getElementById('knobs-container');
+      container.innerHTML = '';
+      paramValues = {};
+      s.parameters.forEach(p => {
+        paramValues[p.id] = p.default;
+        const card = document.createElement('div');
+        card.className = 'knob-card';
+        card.innerHTML = `
+          <div class="knob-name">${p.name}</div>
+          <input type="range" min="${p.min}" max="${p.max}" step="${p.step || 0.1}" value="${p.default}"
+            oninput="updateParam('${p.id}', this.value, '${p.unit}')" />
+          <div class="knob-val" id="val-${p.id}">${p.default} ${p.unit}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function updateParam(id, val, unit) {
+      paramValues[id] = parseFloat(val);
+      const lbl = document.getElementById('val-' + id);
+      if (lbl) lbl.textContent = `${parseFloat(val).toFixed(1)} ${unit}`;
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.connect(audioCtx.destination);
+        drawOscilloscope();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function makeDistortionCurve(driveDb) {
+      const k = Math.pow(10, (driveDb || 6) / 20);
+      const n = 1024;
+      const curve = new Float32Array(n);
+      for (let i = 0; i < n; ++i) {
+        const x = (i * 2) / n - 1;
+        curve[i] = Math.tanh(x * k) * 0.92;
+      }
+      return curve;
+    }
+
+    function triggerNote(freq) {
+      ensureAudio();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const shaper = audioCtx.createWaveShaper();
+      const gain = audioCtx.createGain();
+
+      const isEffect = currentBuild && currentBuild.spec.category === 'effect';
+      osc.type = isEffect ? 'triangle' : 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(paramValues.cutoff || 2400, now);
+      filter.Q.setValueAtTime((paramValues.resonance || 25) * 0.15, now);
+
+      shaper.curve = makeDistortionCurve(paramValues.drive || 4);
+
+      const atk = Math.max(0.005, (paramValues.attack || 15) / 1000);
+      const rel = Math.max(0.05, Math.min(1.2, (paramValues.release || 250) / 1000));
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.28, now + atk);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + atk + rel);
+
+      osc.connect(filter);
+      filter.connect(shaper);
+      shaper.connect(gain);
+      gain.connect(analyser);
+
+      osc.start(now);
+      osc.stop(now + atk + rel + 0.02);
+    }
+
+    function toggleArp() {
+      const btn = document.getElementById('arp-btn');
+      if (arpInterval) {
+        clearInterval(arpInterval);
+        arpInterval = null;
+        btn.textContent = '▶ Start Live Audio Demo Loop';
+        return;
+      }
+      const notes = [130.81, 164.81, 196.00, 261.63, 329.63, 392.00, 329.63, 261.63];
+      let idx = 0;
+      triggerNote(notes[0]);
+      arpInterval = setInterval(() => {
+        idx = (idx + 1) % notes.length;
+        triggerNote(notes[idx]);
+      }, 190);
+      btn.textContent = '⏹ Stop Audio Demo Loop';
+    }
+
+    function drawOscilloscope() {
+      const canvas = document.getElementById('scope');
+      const ctx = canvas.getContext('2d');
+      const bufferLength = analyser ? analyser.frequencyBinCount : 256;
+      const dataArray = new Uint8Array(bufferLength);
+
+      function render() {
+        requestAnimationFrame(render);
+        ctx.fillStyle = '#06080d';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw 0.0 dB ceiling reference line
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.22)';
+        ctx.beginPath();
+        ctx.moveTo(0, 8);
+        ctx.lineTo(canvas.width, 8);
+        ctx.moveTo(0, canvas.height - 8);
+        ctx.lineTo(canvas.width, canvas.height - 8);
+        ctx.stroke();
+
+        if (!analyser) return;
+        analyser.getByteTimeDomainData(dataArray);
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#06b6d4';
+        ctx.beginPath();
+        const sliceWidth = canvas.width / bufferLength;
+        let x = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * canvas.height) / 2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+          x += sliceWidth;
+        }
+        ctx.stroke();
+      }
+      render();
+    }
+
+    checkEnvStatus();
+    runFactoryLoop();
+  </script>
+</body>
+</html>

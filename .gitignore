@@ -1,0 +1,17 @@
+# Binaries & build artifacts
+plugfactor
+*.exe
+*.out
+artifacts/
+dist/
+build/
+
+# Environment variables & secrets (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+
+# OS / Editor files
+.DS_Store
+.idea/
+.vscode/
