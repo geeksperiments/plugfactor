@@ -693,13 +693,14 @@ func generateDynamicCmajorCode(s *spec.PluginSpec) string {
         {
             currentDriveLinear += (targetDriveLinear - currentDriveLinear) * 0.002f;
             float<2> dry = in;
-            float<2> driven = dry * currentDriveLinear;
-            float<2> wet = float<2> (tanh (driven[0]), tanh (driven[1])) * masterGain;
-            float<2> blended = (dry * (1.0f - targetWet)) + (wet * targetWet);
-            out <- float<2> (
-                clamp (blended[0], -ceiling, ceiling),
-                clamp (blended[1], -ceiling, ceiling)
-            );
+            float drivenL = dry[0] * currentDriveLinear;
+            float drivenR = dry[1] * currentDriveLinear;
+            float wetL = tanh (drivenL) * masterGain;
+            float wetR = tanh (drivenR) * masterGain;
+            float dryGain = 1.0f - targetWet;
+            float outL = clamp ((dry[0] * dryGain) + (wetL * targetWet), -ceiling, ceiling);
+            float outR = clamp ((dry[1] * dryGain) + (wetR * targetWet), -ceiling, ceiling);
+            out <- float<2> (outL, outR);
             advance();
         }
     }
@@ -714,12 +715,6 @@ func generateDynamicCmajorCode(s *spec.PluginSpec) string {
 
         loop
         {
-            if (envStage == 0)
-            {
-                out <- float<2> (0.0f, 0.0f);
-                advance();
-                continue;
-            }
             if (envStage == 1)
             {
                 envLevel += 1.0f / max (1.0f, (attackMs * 0.001f) * sr);
@@ -736,25 +731,29 @@ func generateDynamicCmajorCode(s *spec.PluginSpec) string {
                 if (envLevel <= 0.0001f) { envLevel = 0.0f; envStage = 0; }
             }
 
-            float rawSaw = (2.0f * phase) - 1.0f;
-            phase += phaseIncrement * (1.0f + detuneAmount);
-            if (phase >= 1.0f) phase -= 1.0f;
+            if (envStage != 0)
+            {
+                float rawSaw = (2.0f * phase) - 1.0f;
+                phase += phaseIncrement * (1.0f + detuneAmount);
+                if (phase >= 1.0f) phase -= 1.0f;
 
-            currentDriveLinear += (targetDriveLinear - currentDriveLinear) * 0.004f;
-            currentCutoffHz    += (targetCutoffHz - currentCutoffHz) * 0.004f;
-            float maxSafeHz = min (18000.0f, sr * 0.42f);
-            float f = 2.0f * sin (float (pi) * min (currentCutoffHz, maxSafeHz) / sr);
-            float damp = clamp (1.0f / qFactor, 0.15f, 2.0f);
+                currentDriveLinear += (targetDriveLinear - currentDriveLinear) * 0.004f;
+                currentCutoffHz    += (targetCutoffHz - currentCutoffHz) * 0.004f;
+                float maxSafeHz = min (18000.0f, sr * 0.42f);
+                float omega = (3.14159265f * min (currentCutoffHz, maxSafeHz)) / sr;
+                float f = 2.0f * sin (omega);
+                float damp = clamp (1.0f / qFactor, 0.15f, 2.0f);
 
-            svfLow  += f * svfBand;
-            float high = rawSaw - svfLow - (damp * svfBand);
-            svfBand += f * high;
-            svfLow  = clamp (svfLow,  -4.0f, 4.0f);
-            svfBand = clamp (svfBand, -4.0f, 4.0f);
+                svfLow  += f * svfBand;
+                float high = rawSaw - svfLow - (damp * svfBand);
+                svfBand += f * high;
+                svfLow  = clamp (svfLow,  -4.0f, 4.0f);
+                svfBand = clamp (svfBand, -4.0f, 4.0f);
 
-            float shaped = tanh (svfLow * currentDriveLinear) * envLevel * velocityGain * masterGain * 0.65f;
-            float s = clamp (shaped, -ceiling, ceiling);
-            out <- float<2> (s, s);
+                float shaped = tanh (svfLow * currentDriveLinear) * envLevel * velocityGain * masterGain * 0.65f;
+                float s = clamp (shaped, -ceiling, ceiling);
+                out <- float<2> (s, s);
+            }
             advance();
         }
     }
@@ -849,8 +848,13 @@ func (e *Engine) runDaytonaVerificationLoop(
 		e.execInDaytonaRemote(ctx, patchFileName)
 	}
 
+	// Also run real native `cmaj play --dry-run` compiler verification when installed locally
+	if cmajErr := runCmajDryRunVerify(ctx, filepath.Join(artifactDir, patchFileName)); cmajErr == nil {
+		daytonaMode += " + cmaj_1.0.3066_verified"
+	}
+
 	cmds := []string{
-		fmt.Sprintf("cmaj validate %s", patchFileName),
+		fmt.Sprintf("cmaj play --dry-run %s", patchFileName),
 		fmt.Sprintf("cmaj render %s --output test.wav --duration 2.0", patchFileName),
 		"python3 check_signal.py test.wav",
 	}
@@ -949,6 +953,41 @@ func (e *Engine) execInDaytonaRemote(ctx context.Context, patchFileName string) 
 	if err == nil && resp != nil {
 		_ = resp.Body.Close()
 	}
+}
+
+func runCmajDryRunVerify(ctx context.Context, patchPath string) error {
+	cmajPaths := []string{
+		"/Users/whatevergeek/Laboratory/Sandbox/cmajor_stuff/cmajor_bin/cmaj",
+		"/usr/local/bin/cmaj",
+		"cmaj",
+	}
+	var cmajBin string
+	for _, p := range cmajPaths {
+		if _, err := os.Stat(p); err == nil {
+			cmajBin = p
+			break
+		}
+	}
+	if cmajBin == "" {
+		if lp, err := exec.LookPath("cmaj"); err == nil {
+			cmajBin = lp
+		}
+	}
+	if cmajBin == "" {
+		return fmt.Errorf("cmaj not found")
+	}
+
+	cmdCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(cmdCtx, cmajBin, "play", "--dry-run", patchPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v: %s", err, string(out))
+	}
+	if strings.Contains(string(out), "error:") {
+		return fmt.Errorf("cmaj compile error: %s", string(out))
+	}
+	return nil
 }
 
 func runCheckSignalScript(ctx context.Context, wavPath string) (SignalReport, string, int) {
