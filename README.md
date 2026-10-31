@@ -180,8 +180,19 @@ erDiagram
 
 ## 4. Live Studio UI & VST3/AU DAW Drag-and-Drop
 
+### 4.1 Polyphonic Subtractive Synth (`std::midi::Message`) — Live Execution & Self-Repair
 <p align="center">
-  <img src="docs/assets/studio-ui-preview.svg" alt="PlugFactor Live Studio UI & Universal VST3/AU Container" width="100%" />
+  <img src="docs/assets/screenshot-synth-studio.png" alt="PlugFactor Live Studio UI — 8-Voice Polyphonic Subtractive Synth with Neo4j Grounding & Daytona Self-Repair" width="100%" />
+</p>
+
+### 4.2 Warm Tube Stereo Saturator (`2-in / 2-out FX`) — `plugin.spec.yaml` & Parameter Binding
+<p align="center">
+  <img src="docs/assets/screenshot-saturator-fx.png" alt="PlugFactor Live Studio UI — Warm Tube Stereo Saturator FX & plugin.spec.yaml" width="100%" />
+</p>
+
+### 4.3 Native `CmajPlugin` (`Cmajor 1.0.3066`) Desktop VST3/AU Receiver
+<p align="center">
+  <img src="docs/assets/screenshot-cmajplugin-daw.png" alt="PlugFactor Factory-to-DAW Native CmajPlugin 1.0.3066 Drag-and-Drop" width="100%" />
 </p>
 
 ### Dual Hot-Swap Targets
