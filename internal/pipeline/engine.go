@@ -499,7 +499,7 @@ func (e *Engine) queryNeo4jGrounding(ctx context.Context, category string) ([]Gr
 
 func (e *Engine) generateCmajPatchJSON(s *spec.PluginSpec) string {
 	patch := map[string]any{
-		"cmajorversion": "1.0",
+		"CmajorVersion": 1,
 		"ID":            s.ID,
 		"version":       s.Version,
 		"name":          s.Name,
