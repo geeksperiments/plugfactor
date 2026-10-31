@@ -725,6 +725,9 @@
       const isEffect = currentBuild && currentBuild.spec.category === 'effect';
       osc.type = isEffect ? 'triangle' : 'sawtooth';
       osc.frequency.setValueAtTime(freq, now);
+      if (paramValues.detune !== undefined) {
+        osc.detune.setValueAtTime(paramValues.detune, now);
+      }
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(paramValues.cutoff || 2400, now);
@@ -734,9 +737,11 @@
 
       const atk = Math.max(0.005, (paramValues.attack || 15) / 1000);
       const rel = Math.max(0.05, Math.min(1.2, (paramValues.release || 250) / 1000));
+      const volScale = paramValues.volume !== undefined ? (paramValues.volume / 100.0) : 0.85;
+      const peakGain = Math.max(0.0002, 0.32 * volScale);
 
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.linearRampToValueAtTime(0.28, now + atk);
+      gain.gain.linearRampToValueAtTime(peakGain, now + atk);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + atk + rel);
 
       osc.connect(filter);

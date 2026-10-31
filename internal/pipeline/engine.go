@@ -215,20 +215,40 @@ func (e *Engine) ExecuteVisibleLoop(ctx context.Context, req BuildRequest) (*Bui
 
 func deriveNameAndSlug(prompt string, fallbackName, fallbackSlug string) (string, string) {
 	cleaned := strings.TrimSpace(prompt)
-	for _, prefix := range []string{"build a ", "build an ", "create a ", "create an ", "make a ", "make an ", "generate a ", "generate an ", "build ", "create "} {
+	for _, prefix := range []string{
+		"build a ", "build an ", "create a ", "create an ",
+		"make a ", "make an ", "generate a ", "generate an ",
+		"build ", "create ", "make ",
+	} {
 		if strings.HasPrefix(strings.ToLower(cleaned), prefix) {
 			cleaned = strings.TrimSpace(cleaned[len(prefix):])
 			break
 		}
 	}
+	// Strip trailing filler words like "controls only", "only", "please"
+	for _, suffix := range []string{" controls only", " control only", " only", " please"} {
+		if strings.HasSuffix(strings.ToLower(cleaned), suffix) {
+			cleaned = strings.TrimSpace(cleaned[:len(cleaned)-len(suffix)])
+		}
+	}
 	if len(cleaned) < 3 {
 		return fallbackName, fallbackSlug
 	}
-	if len(cleaned) > 44 {
-		cleaned = strings.TrimSpace(cleaned[:44])
-	}
-	// Title-case words for display name
+
 	words := strings.Fields(cleaned)
+	if len(words) > 7 {
+		words = words[:7]
+	}
+	// Drop trailing conjunctions ("and", "with", "or")
+	for len(words) > 1 {
+		last := strings.ToLower(words[len(words)-1])
+		if last == "and" || last == "with" || last == "or" || last == "for" {
+			words = words[:len(words)-1]
+		} else {
+			break
+		}
+	}
+
 	for i, w := range words {
 		if len(w) > 1 {
 			words[i] = strings.ToUpper(w[:1]) + w[1:]
@@ -237,11 +257,13 @@ func deriveNameAndSlug(prompt string, fallbackName, fallbackSlug string) (string
 		}
 	}
 	displayName := strings.Join(words, " ")
+	if len(displayName) > 60 {
+		displayName = strings.TrimSpace(displayName[:60])
+	}
 
-	// Build snake_case slug for reverse-DNS ID
 	var slugBuf strings.Builder
 	lastUnderscore := false
-	for _, r := range strings.ToLower(cleaned) {
+	for _, r := range strings.ToLower(displayName) {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
 			slugBuf.WriteRune(r)
 			lastUnderscore = false
@@ -260,6 +282,93 @@ func deriveNameAndSlug(prompt string, fallbackName, fallbackSlug string) (string
 	return displayName, "com.plugfactor." + slug
 }
 
+func extractPromptParameters(prompt string, isEffect bool) []spec.ParameterSpec {
+	lower := strings.ToLower(prompt)
+	var params []spec.ParameterSpec
+	added := make(map[string]bool)
+
+	add := func(p spec.ParameterSpec) {
+		if !added[p.ID] {
+			added[p.ID] = true
+			params = append(params, p)
+		}
+	}
+
+	// Check explicit control mentions in natural language prompt
+	if strings.Contains(lower, "distort") || strings.Contains(lower, "drive") || strings.Contains(lower, "saturat") || strings.Contains(lower, "overdrive") || strings.Contains(lower, "fuzz") {
+		add(spec.ParameterSpec{
+			ID: "drive", Name: "Distortion Drive", Min: 0.0, Max: 24.0, Default: 8.5, Step: 0.1, Unit: spec.UnitDB, Curve: spec.CurveLinear,
+		})
+	}
+	if strings.Contains(lower, "filter") || strings.Contains(lower, "cutoff") || strings.Contains(lower, "svf") || strings.Contains(lower, "lowpass") || strings.Contains(lower, "highpass") {
+		add(spec.ParameterSpec{
+			ID: "cutoff", Name: "Filter Cutoff", Min: 20.0, Max: 18000.0, Default: 2800.0, Step: 1.0, Unit: spec.UnitHz, Curve: spec.CurveLogarithmic,
+		})
+	}
+	if strings.Contains(lower, "resonan") || strings.Contains(lower, "acid") || strings.Contains(lower, "303") {
+		add(spec.ParameterSpec{
+			ID: "resonance", Name: "Filter Resonance", Min: 1.0, Max: 100.0, Default: 32.0, Step: 0.5, Unit: spec.UnitPercent, Curve: spec.CurveLinear,
+		})
+	}
+	if strings.Contains(lower, "detune") || strings.Contains(lower, "unison") || strings.Contains(lower, "spread") || strings.Contains(lower, "chorus") {
+		add(spec.ParameterSpec{
+			ID: "detune", Name: "Osc Detune", Min: 0.0, Max: 100.0, Default: 22.0, Step: 0.5, Unit: spec.UnitPercent, Curve: spec.CurveLinear,
+		})
+	}
+
+	hasADSR := strings.Contains(lower, "adsr") || strings.Contains(lower, "envelope")
+	if hasADSR || strings.Contains(lower, "attack") {
+		add(spec.ParameterSpec{
+			ID: "attack", Name: "ADSR Attack", Min: 1.0, Max: 2000.0, Default: 15.0, Step: 1.0, Unit: spec.UnitMs, Curve: spec.CurveLogarithmic,
+		})
+	}
+	if hasADSR || strings.Contains(lower, "decay") {
+		add(spec.ParameterSpec{
+			ID: "decay", Name: "ADSR Decay", Min: 5.0, Max: 4000.0, Default: 300.0, Step: 1.0, Unit: spec.UnitMs, Curve: spec.CurveLogarithmic,
+		})
+	}
+	if hasADSR || strings.Contains(lower, "sustain") {
+		add(spec.ParameterSpec{
+			ID: "sustain", Name: "ADSR Sustain", Min: 0.0, Max: 100.0, Default: 75.0, Step: 1.0, Unit: spec.UnitPercent, Curve: spec.CurveLinear,
+		})
+	}
+	if hasADSR || strings.Contains(lower, "release") {
+		add(spec.ParameterSpec{
+			ID: "release", Name: "ADSR Release", Min: 5.0, Max: 5000.0, Default: 280.0, Step: 1.0, Unit: spec.UnitMs, Curve: spec.CurveLogarithmic,
+		})
+	}
+	if strings.Contains(lower, "mix") || strings.Contains(lower, "wet") || strings.Contains(lower, "dry") || strings.Contains(lower, "blend") {
+		add(spec.ParameterSpec{
+			ID: "mix", Name: "Dry / Wet Mix", Min: 0.0, Max: 100.0, Default: 85.0, Step: 1.0, Unit: spec.UnitPercent, Curve: spec.CurveLinear,
+		})
+	}
+	if strings.Contains(lower, "volume") || strings.Contains(lower, "gain") || strings.Contains(lower, "level") || strings.Contains(lower, "output") {
+		add(spec.ParameterSpec{
+			ID: "volume", Name: "Master Volume", Min: 0.0, Max: 100.0, Default: 80.0, Step: 1.0, Unit: spec.UnitPercent, Curve: spec.CurveLinear,
+		})
+	}
+
+	if len(params) > 0 {
+		return params
+	}
+
+	// Default fallbacks when prompt does not specify individual controls
+	if isEffect {
+		return []spec.ParameterSpec{
+			{ID: "drive", Name: "Drive", Min: 0.0, Max: 24.0, Default: 9.0, Step: 0.1, Unit: spec.UnitDB, Curve: spec.CurveLinear},
+			{ID: "mix", Name: "Dry / Wet Mix", Min: 0.0, Max: 100.0, Default: 85.0, Step: 1.0, Unit: spec.UnitPercent, Curve: spec.CurveLinear},
+		}
+	}
+	return []spec.ParameterSpec{
+		{ID: "cutoff", Name: "Filter Cutoff", Min: 20.0, Max: 18000.0, Default: 2800.0, Step: 1.0, Unit: spec.UnitHz, Curve: spec.CurveLogarithmic},
+		{ID: "resonance", Name: "Filter Resonance", Min: 1.0, Max: 100.0, Default: 28.0, Step: 0.5, Unit: spec.UnitPercent, Curve: spec.CurveLinear},
+		{ID: "attack", Name: "ADSR Attack", Min: 1.0, Max: 2000.0, Default: 15.0, Step: 1.0, Unit: spec.UnitMs, Curve: spec.CurveLogarithmic},
+		{ID: "decay", Name: "ADSR Decay", Min: 5.0, Max: 4000.0, Default: 300.0, Step: 1.0, Unit: spec.UnitMs, Curve: spec.CurveLogarithmic},
+		{ID: "sustain", Name: "ADSR Sustain", Min: 0.0, Max: 100.0, Default: 75.0, Step: 1.0, Unit: spec.UnitPercent, Curve: spec.CurveLinear},
+		{ID: "release", Name: "ADSR Release", Min: 5.0, Max: 5000.0, Default: 280.0, Step: 1.0, Unit: spec.UnitMs, Curve: spec.CurveLogarithmic},
+	}
+}
+
 func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 	lower := strings.ToLower(prompt)
 	isEffect := (categoryHint == "effect" ||
@@ -276,6 +385,7 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 
 	if isEffect {
 		name, id := deriveNameAndSlug(prompt, "Warm Tube Stereo Saturator", "com.plugfactor.stereo_saturator")
+		params := extractPromptParameters(prompt, true)
 		return &spec.PluginSpec{
 			Name:        name,
 			ID:          id,
@@ -290,28 +400,7 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 				HasMIDIInput:   false,
 				PolyphonyLimit: 0,
 			},
-			Parameters: []spec.ParameterSpec{
-				{
-					ID:      "drive",
-					Name:    "Drive",
-					Min:     0.0,
-					Max:     24.0,
-					Default: 9.0,
-					Step:    0.1,
-					Unit:    spec.UnitDB,
-					Curve:   spec.CurveLinear,
-				},
-				{
-					ID:      "mix",
-					Name:    "Dry / Wet Mix",
-					Min:     0.0,
-					Max:     100.0,
-					Default: 85.0,
-					Step:    1.0,
-					Unit:    spec.UnitPercent,
-					Curve:   spec.CurveLinear,
-				},
-			},
+			Parameters: params,
 			DSPTopology: &spec.DSPTopology{
 				MainProcessor: "StereoSaturator",
 				Nodes: []spec.DSPNode{
@@ -330,13 +419,14 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 	}
 
 	name, id := deriveNameAndSlug(prompt, "Poly Subtractive Synth", "com.plugfactor.subtractive_synth")
+	params := extractPromptParameters(prompt, false)
 
 	return &spec.PluginSpec{
 		Name:        name,
 		ID:          id,
 		Category:    spec.CategoryInstrument,
 		Version:     "1.0.0",
-		Description: fmt.Sprintf("Synthesized from prompt: %q. 8-voice polyphonic synthesizer parsing std::midi::Message with SVF filter and ADSR envelope.", prompt),
+		Description: fmt.Sprintf("Synthesized from prompt: %q. 8-voice polyphonic synthesizer parsing std::midi::Message with custom DSP topology.", prompt),
 		AudioIO: spec.AudioIOSpec{
 			InputChannels:  0,
 			OutputChannels: 2,
@@ -345,68 +435,7 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 			HasMIDIInput:   true,
 			PolyphonyLimit: 8,
 		},
-		Parameters: []spec.ParameterSpec{
-			{
-				ID:      "cutoff",
-				Name:    "Filter Cutoff",
-				Min:     20.0,
-				Max:     18000.0,
-				Default: 3200.0,
-				Step:    1.0,
-				Unit:    spec.UnitHz,
-				Curve:   spec.CurveLogarithmic,
-			},
-			{
-				ID:      "resonance",
-				Name:    "Filter Resonance",
-				Min:     1.0,
-				Max:     100.0,
-				Default: 28.0,
-				Step:    0.5,
-				Unit:    spec.UnitPercent,
-				Curve:   spec.CurveLinear,
-			},
-			{
-				ID:      "attack",
-				Name:    "ADSR Attack",
-				Min:     1.0,
-				Max:     2000.0,
-				Default: 15.0,
-				Step:    1.0,
-				Unit:    spec.UnitMs,
-				Curve:   spec.CurveLogarithmic,
-			},
-			{
-				ID:      "decay",
-				Name:    "ADSR Decay",
-				Min:     5.0,
-				Max:     4000.0,
-				Default: 300.0,
-				Step:    1.0,
-				Unit:    spec.UnitMs,
-				Curve:   spec.CurveLogarithmic,
-			},
-			{
-				ID:      "sustain",
-				Name:    "ADSR Sustain",
-				Min:     0.0,
-				Max:     100.0,
-				Default: 75.0,
-				Step:    1.0,
-				Unit:    spec.UnitPercent,
-				Curve:   spec.CurveLinear,
-			},
-			{
-				ID:      "release",
-				Name:    "ADSR Release",
-				Min:     5.0,
-				Max:     5000.0,
-				Default: 280.0,
-				Step:    1.0,
-				Unit:    spec.UnitMs,
-				Curve:   spec.CurveLogarithmic,
-			},
-		},
+		Parameters: params,
 		DSPTopology: &spec.DSPTopology{
 			MainProcessor: "SubtractiveSynth",
 			Nodes: []spec.DSPNode{
@@ -532,19 +561,10 @@ func (e *Engine) synthesizeCmajorDSP(
 		}
 	}
 
-	// Load gold-standard verified Cmajor implementation
-	refPath := "/Users/whatevergeek/Laboratory/Sandbox/go_stuff/plugfactor-sdd/reference/cmajor/subtractive_synth/subtractive_synth.cmajor"
-	if s.Category == spec.CategoryEffect {
-		refPath = "/Users/whatevergeek/Laboratory/Sandbox/go_stuff/plugfactor-sdd/reference/cmajor/stereo_saturator/stereo_saturator.cmajor"
-	}
-	if raw, err := os.ReadFile(refPath); err == nil {
-		repairedCode = string(raw)
-	} else {
-		repairedCode = "// Cmajor fallback source\n"
-	}
+	// Dynamically synthesize Cmajor 1.0.3066 processor matching the exact parameters in s.Parameters
+	repairedCode = generateDynamicCmajorCode(s)
 
 	if simulateRepair {
-		// Create Attempt 1 code with un-clamped +2.41 dB output gain so Daytona check_signal.py catches SIGNAL_CLIPPING
 		initialCode = strings.Replace(
 			repairedCode,
 			"let ceiling = 0.9885f;",
@@ -556,6 +576,192 @@ func (e *Engine) synthesizeCmajorDSP(
 	}
 
 	return initialCode, repairedCode, mode
+}
+
+func generateDynamicCmajorCode(s *spec.PluginSpec) string {
+	var b strings.Builder
+	b.WriteString("// =============================================================================\n")
+	b.WriteString(fmt.Sprintf("// PlugFactor Synthesized Cmajor 1.0.3066 Patch: %s (%s)\n", s.Name, s.ID))
+	b.WriteString(fmt.Sprintf("// Category: %s | Parameters: %d\n", s.Category, len(s.Parameters)))
+	b.WriteString("// =============================================================================\n\n")
+
+	procName := "PlugFactorSynth"
+	if s.Category == spec.CategoryEffect {
+		procName = "PlugFactorEffect"
+	}
+
+	b.WriteString(fmt.Sprintf("processor %s [[ main ]]\n{\n", procName))
+	if s.Category == spec.CategoryEffect {
+		b.WriteString("    input stream float<2> in;\n")
+	} else {
+		b.WriteString("    input event std::midi::Message midiIn;\n")
+	}
+	b.WriteString("    output stream float<2> out;\n\n")
+
+	// Emit ONLY the exact input event float32 parameter endpoints from s.Parameters
+	for _, p := range s.Parameters {
+		step := p.Step
+		if step <= 0 {
+			step = 0.1
+		}
+		b.WriteString(fmt.Sprintf(
+			"    input event float32 %s [[ name: %q, min: %.1f, max: %.1f, init: %.1f, step: %.1f, unit: %q ]];\n",
+			p.ID, p.Name, p.Min, p.Max, p.Default, step, string(p.Unit),
+		))
+	}
+
+	b.WriteString(`
+    float phase = 0.0f;
+    float phaseIncrement = 0.00916f;
+    float velocityGain = 0.0f;
+    int   activeNote = -1;
+
+    float targetDriveLinear = 1.995f;
+    float currentDriveLinear = 1.995f;
+    float targetCutoffHz = 2800.0f;
+    float currentCutoffHz = 2800.0f;
+    float qFactor = 1.4f;
+    float detuneAmount = 0.003f;
+    float targetWet = 1.0f;
+    float masterGain = 0.80f;
+
+    float attackMs  = 15.0f;
+    float decayMs   = 300.0f;
+    float sustainLv = 0.75f;
+    float releaseMs = 280.0f;
+
+    int   envStage = 0;
+    float envLevel = 0.0f;
+    float svfLow   = 0.0f;
+    float svfBand  = 0.0f;
+`)
+
+	if s.Category == spec.CategoryInstrument {
+		b.WriteString(`
+    event midiIn (std::midi::Message msg)
+    {
+        if (msg.isNoteOn())
+        {
+            int note = msg.getNoteNumber();
+            activeNote = note;
+            float freqHz = 440.0f * pow (2.0f, float (note - 69) / 12.0f);
+            phaseIncrement = clamp (freqHz / float (processor.frequency), 0.0001f, 0.45f);
+            velocityGain   = clamp (msg.getFloatVelocity(), 0.05f, 1.0f);
+            envStage       = 1;
+        }
+        else if (msg.isNoteOff())
+        {
+            if (msg.getNoteNumber() == activeNote && envStage != 0)
+                envStage = 4;
+        }
+    }
+`)
+	}
+
+	// Emit event handlers only for declared parameters
+	for _, p := range s.Parameters {
+		switch p.ID {
+		case "drive":
+			b.WriteString("    event drive (float32 dB)      { targetDriveLinear = pow (10.0f, clamp (float (dB), 0.0f, 24.0f) * 0.05f); }\n")
+		case "cutoff":
+			b.WriteString("    event cutoff (float32 hz)     { targetCutoffHz = clamp (float (hz), 20.0f, 18000.0f); }\n")
+		case "resonance":
+			b.WriteString("    event resonance (float32 pct) { qFactor = 0.5f + (clamp (float (pct), 1.0f, 100.0f) * 0.06f); }\n")
+		case "detune":
+			b.WriteString("    event detune (float32 pct)    { detuneAmount = clamp (float (pct) * 0.0002f, 0.0f, 0.02f); }\n")
+		case "attack":
+			b.WriteString("    event attack (float32 ms)     { attackMs  = clamp (float (ms), 1.0f, 2000.0f); }\n")
+		case "decay":
+			b.WriteString("    event decay (float32 ms)      { decayMs   = clamp (float (ms), 5.0f, 4000.0f); }\n")
+		case "sustain":
+			b.WriteString("    event sustain (float32 pct)   { sustainLv = clamp (float (pct) * 0.01f, 0.0f, 1.0f); }\n")
+		case "release":
+			b.WriteString("    event release (float32 ms)    { releaseMs = clamp (float (ms), 5.0f, 5000.0f); }\n")
+		case "mix":
+			b.WriteString("    event mix (float32 pct)       { targetWet = clamp (float (pct) * 0.01f, 0.0f, 1.0f); }\n")
+		case "volume":
+			b.WriteString("    event volume (float32 pct)    { masterGain = clamp (float (pct) * 0.01f, 0.0f, 1.0f); }\n")
+		}
+	}
+
+	if s.Category == spec.CategoryEffect {
+		b.WriteString(`
+    void main()
+    {
+        let ceiling = 0.9885f;
+        loop
+        {
+            currentDriveLinear += (targetDriveLinear - currentDriveLinear) * 0.002f;
+            float<2> dry = in;
+            float<2> driven = dry * currentDriveLinear;
+            float<2> wet = float<2> (tanh (driven[0]), tanh (driven[1])) * masterGain;
+            float<2> blended = (dry * (1.0f - targetWet)) + (wet * targetWet);
+            out <- float<2> (
+                clamp (blended[0], -ceiling, ceiling),
+                clamp (blended[1], -ceiling, ceiling)
+            );
+            advance();
+        }
+    }
+}
+`)
+	} else {
+		b.WriteString(`
+    void main()
+    {
+        float sr = float (processor.frequency);
+        let ceiling = 0.9885f;
+
+        loop
+        {
+            if (envStage == 0)
+            {
+                out <- float<2> (0.0f, 0.0f);
+                advance();
+                continue;
+            }
+            if (envStage == 1)
+            {
+                envLevel += 1.0f / max (1.0f, (attackMs * 0.001f) * sr);
+                if (envLevel >= 1.0f) { envLevel = 1.0f; envStage = 2; }
+            }
+            else if (envStage == 2)
+            {
+                envLevel -= (1.0f - sustainLv) / max (1.0f, (decayMs * 0.001f) * sr);
+                if (envLevel <= sustainLv) { envLevel = sustainLv; envStage = 3; }
+            }
+            else if (envStage == 4)
+            {
+                envLevel -= max (0.00001f, envLevel) / max (1.0f, (releaseMs * 0.001f) * sr);
+                if (envLevel <= 0.0001f) { envLevel = 0.0f; envStage = 0; }
+            }
+
+            float rawSaw = (2.0f * phase) - 1.0f;
+            phase += phaseIncrement * (1.0f + detuneAmount);
+            if (phase >= 1.0f) phase -= 1.0f;
+
+            currentDriveLinear += (targetDriveLinear - currentDriveLinear) * 0.004f;
+            currentCutoffHz    += (targetCutoffHz - currentCutoffHz) * 0.004f;
+            float maxSafeHz = min (18000.0f, sr * 0.42f);
+            float f = 2.0f * sin (float (pi) * min (currentCutoffHz, maxSafeHz) / sr);
+            float damp = clamp (1.0f / qFactor, 0.15f, 2.0f);
+
+            svfLow  += f * svfBand;
+            float high = rawSaw - svfLow - (damp * svfBand);
+            svfBand += f * high;
+            svfLow  = clamp (svfLow,  -4.0f, 4.0f);
+            svfBand = clamp (svfBand, -4.0f, 4.0f);
+
+            float shaped = tanh (svfLow * currentDriveLinear) * envLevel * velocityGain * masterGain * 0.65f;
+            float s = clamp (shaped, -ceiling, ceiling);
+            out <- float<2> (s, s);
+            advance();
+        }
+    }
+}
+`)
+	}
+	return b.String()
 }
 
 func (e *Engine) callNosanaEndpoint(ctx context.Context, s *spec.PluginSpec, constraints []GroundedConstraint) (string, error) {

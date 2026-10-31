@@ -45,4 +45,22 @@ func TestExecuteVisibleLoop_InstrumentAndEffect(t *testing.T) {
 	if len(resFx.Attempts) != 1 || resFx.Attempts[0].Status != "PASSED" {
 		t.Errorf("expected single passing attempt for effect, got %+v", resFx.Attempts)
 	}
+
+	// 3. Test Custom Prompt Controls Only ("distortion and filter and volume controls only")
+	resCustom, err := eng.ExecuteVisibleLoop(context.Background(), pipeline.BuildRequest{
+		Prompt:         "build a simple synth with distortion and filter and volume controls only",
+		SimulateRepair: false,
+	})
+	if err != nil {
+		t.Fatalf("custom synth build failed: %v", err)
+	}
+	if len(resCustom.Spec.Parameters) != 3 {
+		t.Fatalf("expected exactly 3 parameters (drive, cutoff, volume), got %d: %+v", len(resCustom.Spec.Parameters), resCustom.Spec.Parameters)
+	}
+	wantIDs := []string{"drive", "cutoff", "volume"}
+	for i, want := range wantIDs {
+		if resCustom.Spec.Parameters[i].ID != want {
+			t.Errorf("param[%d] = %q, want %q", i, resCustom.Spec.Parameters[i].ID, want)
+		}
+	}
 }
