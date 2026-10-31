@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 290" width="100%" height="290">
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="290" rx="16" fill="url(#cardBg)" stroke="#1e293b" stroke-width="2"/>
+  <text x="28" y="34" font-family="Inter, sans-serif" font-size="15" font-weight="800" fill="#38bdf8" letter-spacing="0.5">
+    THE "ONE VISIBLE LOOP" — CLOSED-LOOP SELF-HEALING AUDIO DSP FACTORY
+  </text>
+
+  <!-- Step 1: Neo4j Grounding -->
+  <g transform="translate(24, 56)">
+    <rect width="205" height="196" rx="12" fill="#0f172a" stroke="#3b82f6" stroke-width="1.8"/>
+    <rect x="12" y="12" width="181" height="24" rx="6" fill="#1e3a8a" fill-opacity="0.4"/>
+    <text x="102" y="28" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#60a5fa">1. NEO4J GRAPH GROUNDING</text>
+    <text x="16" y="58" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#f1f5f9">One Graph-Only Question</text>
+    <text x="16" y="78" font-family="monospace" font-size="10.5" fill="#94a3b8">(:DSPModule)</text>
+    <text x="16" y="94" font-family="monospace" font-size="10.5" fill="#38bdf8">  -[:REQUIRES_STREAM]-&gt;</text>
+    <text x="16" y="110" font-family="monospace" font-size="10.5" fill="#94a3b8">(:DSPModule)</text>
+    <text x="16" y="138" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">Retrieves verified Cmajor</text>
+    <text x="16" y="154" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">std::midi &amp; SVF routing</text>
+    <text x="16" y="170" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">before LLM synthesis.</text>
+  </g>
+
+  <line x1="229" y1="154" x2="255" y2="154" stroke="#38bdf8" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+  <!-- Step 2: Nosana GPU Synthesis -->
+  <g transform="translate(258, 56)">
+    <rect width="205" height="196" rx="12" fill="#0f172a" stroke="#8b5cf6" stroke-width="1.8"/>
+    <rect x="12" y="12" width="181" height="24" rx="6" fill="#4c1d95" fill-opacity="0.4"/>
+    <text x="102" y="28" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#c4b5fd">2. NOSANA GPU INFERENCE</text>
+    <text x="16" y="58" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#f1f5f9">Spec &amp; Cmajor Synthesis</text>
+    <text x="16" y="80" font-family="monospace" font-size="10.5" fill="#a78bfa">Qwen 2.5 Coder 32B</text>
+    <text x="16" y="102" font-family="monospace" font-size="10.5" fill="#94a3b8">• plugin.spec.yaml</text>
+    <text x="16" y="118" font-family="monospace" font-size="10.5" fill="#94a3b8">• synth.cmajorpatch</text>
+    <text x="16" y="134" font-family="monospace" font-size="10.5" fill="#94a3b8">• synth.cmajor [[main]]</text>
+    <text x="16" y="164" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">Zero-import real-time</text>
+    <text x="16" y="180" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">lock-free DSP codegen.</text>
+  </g>
+
+  <line x1="463" y1="154" x2="489" y2="154" stroke="#38bdf8" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+  <!-- Step 3: Daytona Sandbox & Self-Repair -->
+  <g transform="translate(492, 56)">
+    <rect width="215" height="196" rx="12" fill="#0f172a" stroke="#f59e0b" stroke-width="1.8"/>
+    <rect x="12" y="12" width="191" height="24" rx="6" fill="#78350f" fill-opacity="0.4"/>
+    <text x="107" y="28" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#fcd34d">3. DAYTONA QA &amp; REPAIR</text>
+    <text x="16" y="56" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#f1f5f9">One Daytona Action</text>
+    <text x="16" y="76" font-family="monospace" font-size="10" fill="#fb7185">Run #1: Peak +2.41 dB &gt; 0dB</text>
+    <text x="16" y="92" font-family="monospace" font-size="10" fill="#fb7185">❌ SIGNAL_CLIPPING (Exit 1)</text>
+    <text x="16" y="114" font-family="monospace" font-size="10" fill="#fbbf24">🔧 Auto-Repair Ceiling</text>
+    <text x="16" y="136" font-family="monospace" font-size="10" fill="#34d399">Run #2: Peak -1.42 dB &lt;= 0dB</text>
+    <text x="16" y="152" font-family="monospace" font-size="10" fill="#34d399">✅ PASSED (NaN:0, Inf:0)</text>
+    <text x="16" y="178" font-family="Inter, sans-serif" font-size="10.5" fill="#cbd5e1">check_signal.py WAV QA</text>
+  </g>
+
+  <line x1="707" y1="154" x2="733" y2="154" stroke="#10b981" stroke-width="2.2" marker-end="url(#arrowGreen)"/>
+
+  <!-- Step 4: Neo4j Writeback + DAW Hot-Swap -->
+  <g transform="translate(736, 56)">
+    <rect width="200" height="196" rx="12" fill="#0f172a" stroke="#10b981" stroke-width="1.8"/>
+    <rect x="12" y="12" width="176" height="24" rx="6" fill="#064e3b" fill-opacity="0.4"/>
+    <text x="100" y="28" text-anchor="middle" font-family="monospace" font-size="11" font-weight="700" fill="#34d399">4. MEMORY + DAW DROP</text>
+    <text x="16" y="56" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#f1f5f9">Lineage &amp; VST3 Hot-Swap</text>
+    <text x="16" y="78" font-family="monospace" font-size="10" fill="#94a3b8">(:DaytonaRun #1)</text>
+    <text x="16" y="94" font-family="monospace" font-size="10" fill="#fb7185"> -[:FAILED_WITH]-&gt;(:Error)</text>
+    <text x="16" y="110" font-family="monospace" font-size="10" fill="#34d399"> -[:REPAIRED_BY]-&gt;(#2)</text>
+    <text x="16" y="140" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">Drag .cmajorpatch straight</text>
+    <text x="16" y="156" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">into CmajPlugin VST3/AU</text>
+    <text x="16" y="172" font-family="Inter, sans-serif" font-size="11" fill="#cbd5e1">&amp; WebAudio Studio!</text>
+  </g>
+</svg>

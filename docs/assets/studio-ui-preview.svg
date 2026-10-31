@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" width="100%" height="440">
+  <rect width="960" height="440" rx="14" fill="#090b10" stroke="#252d42" stroke-width="2"/>
+  <!-- Top Header -->
+  <rect x="2" y="2" width="956" height="48" rx="12" fill="#0c1018"/>
+  <rect x="18" y="11" width="30" height="30" rx="7" fill="#6366f1"/>
+  <text x="33" y="31" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="800" fill="#fff">PF</text>
+  <text x="58" y="24" font-family="sans-serif" font-size="13" font-weight="700" fill="#f1f5f9">PlugFactor — Autonomous Virtual Instrument &amp; Audio FX Factory</text>
+  <text x="58" y="39" font-family="sans-serif" font-size="10" fill="#94a3b8">Cmajor 1.0 DSP • Neo4j 4-Tier Graph Memory • Nosana GPU Inference • Daytona Cloud QA</text>
+
+  <!-- Green Connection Pills -->
+  <rect x="530" y="14" width="132" height="22" rx="11" fill="#161b28" stroke="#252d42"/>
+  <circle cx="542" cy="25" r="3.5" fill="#10b981"/>
+  <text x="551" y="29" font-family="monospace" font-size="9.5" fill="#e2e8f0">Neo4j AuraDB: Live</text>
+
+  <rect x="670" y="14" width="136" height="22" rx="11" fill="#161b28" stroke="#252d42"/>
+  <circle cx="682" cy="25" r="3.5" fill="#10b981"/>
+  <text x="691" y="29" font-family="monospace" font-size="9.5" fill="#e2e8f0">Daytona: Connected</text>
+
+  <rect x="814" y="14" width="130" height="22" rx="11" fill="#161b28" stroke="#252d42"/>
+  <circle cx="826" cy="25" r="3.5" fill="#10b981"/>
+  <text x="835" y="29" font-family="monospace" font-size="9.5" fill="#e2e8f0">Nosana: Qwen2.5</text>
+
+  <!-- Left Panel: Prompt & Visible Loop -->
+  <rect x="16" y="62" width="475" height="122" rx="10" fill="#11151f" stroke="#252d42"/>
+  <text x="28" y="82" font-family="sans-serif" font-size="11" font-weight="700" fill="#06b6d4">1. NATURAL LANGUAGE PLUGIN SPECIFICATION</text>
+  <rect x="28" y="92" width="451" height="44" rx="6" fill="#161b28" stroke="#6366f1"/>
+  <text x="38" y="112" font-family="sans-serif" font-size="11.5" fill="#f1f5f9">Build an 8-voice polyphonic Acid 303 synth parsing std::midi::Message</text>
+  <text x="38" y="127" font-family="sans-serif" font-size="11.5" fill="#f1f5f9">with resonant SVF lowpass filter and ADSR envelope</text>
+  <rect x="334" y="145" width="145" height="28" rx="6" fill="#6366f1"/>
+  <text x="406" y="163" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#fff">⚡ Synthesize &amp; Verify</text>
+
+  <!-- Left Panel: Loop Telemetry -->
+  <rect x="16" y="194" width="475" height="230" rx="10" fill="#11151f" stroke="#252d42"/>
+  <text x="28" y="214" font-family="sans-serif" font-size="11" font-weight="700" fill="#06b6d4">2. THE "ONE VISIBLE LOOP" EXECUTION TRACE</text>
+  <text x="370" y="214" font-family="monospace" font-size="10" fill="#10b981">Completed • Build pf-832246</text>
+
+  <rect x="28" y="224" width="451" height="56" rx="6" fill="#080a0f" stroke="#1e2638"/>
+  <text x="36" y="240" font-family="monospace" font-size="9.5" fill="#a5b4fc">STEP 1 • NEO4J TIER 4 GROUNDING (live_auradb)</text>
+  <text x="36" y="256" font-family="monospace" font-size="9.5" fill="#cbd5e1">(:DSPModule {std::midi::Message}) -[:REQUIRES_STREAM]-&gt; (:DSPModule {MPEConverter})</text>
+  <text x="36" y="270" font-family="monospace" font-size="9.5" fill="#38bdf8">(:DSPModule {VoiceAllocator})     -[:REQUIRES_STREAM]-&gt; (:DSPModule {SVFFilter})</text>
+
+  <rect x="28" y="288" width="451" height="72" rx="6" fill="#080a0f" stroke="#1e2638"/>
+  <text x="36" y="304" font-family="monospace" font-size="9.5" fill="#fcd34d">STEP 2 • DAYTONA SANDBOX QA &amp; AUTO-REPAIR (check_signal.py)</text>
+  <text x="36" y="320" font-family="monospace" font-size="9.5" fill="#fb7185">[Attempt #1 | FAILED] peak_db: +2.41 dB &gt; 0.0 dB ceiling (SIGNAL_CLIPPING)</text>
+  <text x="36" y="335" font-family="monospace" font-size="9.5" fill="#fbbf24">🔧 AUTO-REPAIR: Clamped MasterSafetyLimiter ceiling 1.32f -&gt; 0.9885f (-0.1 dB)</text>
+  <text x="36" y="350" font-family="monospace" font-size="9.5" fill="#34d399">[Attempt #2 | PASSED] exitCode=0 | peak_db: -1.42 dB | NaN: false | Inf: false</text>
+
+  <rect x="28" y="368" width="451" height="44" rx="6" fill="#080a0f" stroke="#1e2638"/>
+  <text x="36" y="384" font-family="monospace" font-size="9.5" fill="#34d399">STEP 3 • NEO4J SELF-HEALING LINEAGE WRITEBACK</text>
+  <text x="36" y="400" font-family="monospace" font-size="9.5" fill="#cbd5e1">(pf-run-1) -[:FAILED_WITH]-&gt; (:Error {SIGNAL_CLIPPING}) -[:REPAIRED_BY]-&gt; (pf-run-2)</text>
+
+  <!-- Right Panel: Export Chip -->
+  <rect x="505" y="62" width="439" height="82" rx="10" fill="#11151f" stroke="#252d42"/>
+  <text x="517" y="82" font-family="sans-serif" font-size="11" font-weight="700" fill="#06b6d4">3. FACTORY ARTIFACT EXPORT (.CMAJORPATCH)</text>
+  <rect x="517" y="92" width="415" height="40" rx="8" fill="#132332" stroke="#06b6d4" stroke-dasharray="5,4"/>
+  <text x="529" y="111" font-family="sans-serif" font-size="11.5" font-weight="700" fill="#f1f5f9">🎹 Acid 303 Resonant Synth (acid_synth.cmajorpatch)</text>
+  <text x="529" y="125" font-family="sans-serif" font-size="9.5" fill="#94a3b8">📂 Reveal in Finder for Native CmajPlugin VST3/AU or Drag Below</text>
+  <rect x="852" y="100" width="70" height="24" rx="5" fill="#090d14" stroke="#06b6d4"/>
+  <text x="887" y="115" text-anchor="middle" font-family="monospace" font-size="9.5" fill="#06b6d4">DRAG ➔</text>
+
+  <!-- Right Panel: VST3/AU Container -->
+  <rect x="505" y="154" width="439" height="270" rx="12" fill="#0e131f" stroke="#10b981" stroke-width="1.8"/>
+  <text x="519" y="175" font-family="sans-serif" font-size="11" font-weight="700" fill="#10b981">🎛️ PLUGFACTOR UNIVERSAL VST3 / AU CONTAINER (HOT-SWAPPED IN 18ms)</text>
+
+  <!-- Oscilloscope -->
+  <rect x="519" y="186" width="411" height="58" rx="6" fill="#06080d" stroke="#252d42"/>
+  <path d="M 525 215 Q 545 190, 565 215 T 605 215 T 645 215 T 685 215 T 725 215 T 765 215 T 805 215 T 845 215 T 885 215 T 925 215"
+        fill="none" stroke="#06b6d4" stroke-width="2.2"/>
+
+  <!-- Knobs Row -->
+  <g transform="translate(519, 254)">
+    <rect x="0" y="0" width="96" height="62" rx="6" fill="#161b28" stroke="#252d42"/>
+    <text x="48" y="18" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">Filter Cutoff</text>
+    <line x1="12" y1="34" x2="84" y2="34" stroke="#06b6d4" stroke-width="4" stroke-linecap="round"/>
+    <text x="48" y="52" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#06b6d4">2400 Hz</text>
+
+    <rect x="105" y="0" width="96" height="62" rx="6" fill="#161b28" stroke="#252d42"/>
+    <text x="153" y="18" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">Resonance</text>
+    <line x1="117" y1="34" x2="189" y2="34" stroke="#06b6d4" stroke-width="4" stroke-linecap="round"/>
+    <text x="153" y="52" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#06b6d4">32.0 %</text>
+
+    <rect x="210" y="0" width="96" height="62" rx="6" fill="#161b28" stroke="#252d42"/>
+    <text x="258" y="18" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">ADSR Attack</text>
+    <line x1="222" y1="34" x2="294" y2="34" stroke="#06b6d4" stroke-width="4" stroke-linecap="round"/>
+    <text x="258" y="52" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#06b6d4">15.0 ms</text>
+
+    <rect x="315" y="0" width="96" height="62" rx="6" fill="#161b28" stroke="#252d42"/>
+    <text x="363" y="18" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#94a3b8">ADSR Release</text>
+    <line x1="327" y1="34" x2="399" y2="34" stroke="#06b6d4" stroke-width="4" stroke-linecap="round"/>
+    <text x="363" y="52" text-anchor="middle" font-family="monospace" font-size="10.5" fill="#06b6d4">250 ms</text>
+  </g>
+
+  <!-- Piano Keys -->
+  <g transform="translate(519, 328)">
+    <rect x="0"   y="0" width="48" height="82" rx="4" fill="#e2e8f0"/><text x="24" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">C4</text>
+    <rect x="52"  y="0" width="48" height="82" rx="4" fill="#e2e8f0"/><text x="76" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">D4</text>
+    <rect x="104" y="0" width="48" height="82" rx="4" fill="#06b6d4"/><text x="128" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#000">E4</text>
+    <rect x="156" y="0" width="48" height="82" rx="4" fill="#e2e8f0"/><text x="180" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">F4</text>
+    <rect x="208" y="0" width="48" height="82" rx="4" fill="#e2e8f0"/><text x="232" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">G4</text>
+    <rect x="260" y="0" width="48" height="82" rx="4" fill="#e2e8f0"/><text x="284" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">A4</text>
+    <rect x="312" y="0" width="48" height="82" rx="4" fill="#e2e8f0"/><text x="336" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">B4</text>
+    <rect x="364" y="0" width="47" height="82" rx="4" fill="#e2e8f0"/><text x="387" y="72" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#0f172a">C5</text>
+
+    <!-- Black Keys -->
+    <rect x="34"  y="0" width="32" height="50" rx="3" fill="#1e293b"/>
+    <rect x="86"  y="0" width="32" height="50" rx="3" fill="#1e293b"/>
+    <rect x="190" y="0" width="32" height="50" rx="3" fill="#1e293b"/>
+    <rect x="242" y="0" width="32" height="50" rx="3" fill="#1e293b"/>
+    <rect x="294" y="0" width="32" height="50" rx="3" fill="#1e293b"/>
+  </g>
+</svg>

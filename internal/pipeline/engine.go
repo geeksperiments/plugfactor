@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geeksperiments/plugfactor-sdd/harness"
-	"github.com/geeksperiments/plugfactor-sdd/pkg/spec"
+	"github.com/geeksperiments/plugfactor/harness"
 	"github.com/geeksperiments/plugfactor/internal/config"
+	"github.com/geeksperiments/plugfactor/pkg/spec"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,9 +100,11 @@ type BuildResult struct {
 	Constraints    []GroundedConstraint `json:"grounded_constraints"`
 	Attempts       []DaytonaAttempt     `json:"daytona_attempts"`
 	WritebackCypher string              `json:"writeback_cypher"`
-	LineageNodes   []GraphNode          `json:"lineage_nodes"`
-	LineageEdges   []GraphEdge          `json:"lineage_edges"`
-	ArtifactDir    string               `json:"artifact_dir"`
+	LineageNodes    []GraphNode          `json:"lineage_nodes"`
+	LineageEdges    []GraphEdge          `json:"lineage_edges"`
+	ArtifactDir     string               `json:"artifact_dir"`
+	PatchFileName   string               `json:"patch_filename"`
+	PatchAbsPath    string               `json:"patch_abs_path"`
 }
 
 // Engine coordinates Spec Architect, Neo4j AuraDB, Nosana GPU Inference, and Daytona Verification.
@@ -143,12 +145,22 @@ func (e *Engine) ExecuteVisibleLoop(ctx context.Context, req BuildRequest) (*Bui
 	initialCmajor, finalCmajor, nosanaMode := e.synthesizeCmajorDSP(ctx, pluginSpec, constraints, req.SimulateRepair)
 
 	// 4. Stage 4: One Daytona Action + Bounded Self-Repair Loop (Max 2 Retries)
-	artifactDir := filepath.Join("artifacts", buildID)
+	baseDir := "/Users/whatevergeek/Laboratory/Sandbox/go_stuff/plugfactor"
+	if _, err := os.Stat(baseDir); err != nil {
+		baseDir, _ = os.Getwd()
+	}
+	artifactDir := filepath.Join(baseDir, "artifacts", buildID)
 	_ = os.MkdirAll(artifactDir, 0o755)
 	_ = os.WriteFile(filepath.Join(artifactDir, "plugin.spec.yaml"), specBytes, 0o644)
-	patchFileName := shortName(pluginSpec.ID) + ".cmajpatch"
-	cmajFileName := shortName(pluginSpec.ID) + ".cmajor"
-	_ = os.WriteFile(filepath.Join(artifactDir, patchFileName), []byte(cmajPatchJSON), 0o644)
+
+	slug := shortName(pluginSpec.ID)
+	patchFileName := slug + ".cmajorpatch"
+	cmajFileName := slug + ".cmajor"
+	patchAbsPath := filepath.Join(artifactDir, patchFileName)
+
+	// Write both .cmajorpatch (for CmajPlugin GUI) and .cmajpatch (for cmaj CLI)
+	_ = os.WriteFile(patchAbsPath, []byte(cmajPatchJSON), 0o644)
+	_ = os.WriteFile(filepath.Join(artifactDir, slug+".cmajpatch"), []byte(cmajPatchJSON), 0o644)
 
 	attempts, daytonaMode := e.runDaytonaVerificationLoop(
 		ctx,
@@ -191,6 +203,8 @@ func (e *Engine) ExecuteVisibleLoop(ctx context.Context, req BuildRequest) (*Bui
 		LineageNodes:    nodes,
 		LineageEdges:    edges,
 		ArtifactDir:     artifactDir,
+		PatchFileName:   patchFileName,
+		PatchAbsPath:    patchAbsPath,
 	}
 
 	bundleBytes, _ := json.MarshalIndent(res, "", "  ")
@@ -199,9 +213,56 @@ func (e *Engine) ExecuteVisibleLoop(ctx context.Context, req BuildRequest) (*Bui
 	return res, nil
 }
 
+func deriveNameAndSlug(prompt string, fallbackName, fallbackSlug string) (string, string) {
+	cleaned := strings.TrimSpace(prompt)
+	for _, prefix := range []string{"build a ", "build an ", "create a ", "create an ", "make a ", "make an ", "generate a ", "generate an ", "build ", "create "} {
+		if strings.HasPrefix(strings.ToLower(cleaned), prefix) {
+			cleaned = strings.TrimSpace(cleaned[len(prefix):])
+			break
+		}
+	}
+	if len(cleaned) < 3 {
+		return fallbackName, fallbackSlug
+	}
+	if len(cleaned) > 44 {
+		cleaned = strings.TrimSpace(cleaned[:44])
+	}
+	// Title-case words for display name
+	words := strings.Fields(cleaned)
+	for i, w := range words {
+		if len(w) > 1 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		} else {
+			words[i] = strings.ToUpper(w)
+		}
+	}
+	displayName := strings.Join(words, " ")
+
+	// Build snake_case slug for reverse-DNS ID
+	var slugBuf strings.Builder
+	lastUnderscore := false
+	for _, r := range strings.ToLower(cleaned) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			slugBuf.WriteRune(r)
+			lastUnderscore = false
+		} else if !lastUnderscore && slugBuf.Len() > 0 {
+			slugBuf.WriteByte('_')
+			lastUnderscore = true
+		}
+	}
+	slug := strings.Trim(slugBuf.String(), "_")
+	if slug == "" || (slug[0] >= '0' && slug[0] <= '9') {
+		slug = "pf_" + slug
+	}
+	if len(slug) > 28 {
+		slug = strings.Trim(slug[:28], "_")
+	}
+	return displayName, "com.plugfactor." + slug
+}
+
 func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 	lower := strings.ToLower(prompt)
-	isEffect := categoryHint == "effect" ||
+	isEffect := (categoryHint == "effect" ||
 		strings.Contains(lower, "saturat") ||
 		strings.Contains(lower, "distortion") ||
 		strings.Contains(lower, "overdrive") ||
@@ -209,24 +270,18 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 		strings.Contains(lower, "tape") ||
 		strings.Contains(lower, "compressor") ||
 		strings.Contains(lower, "effect") ||
-		strings.Contains(lower, "fx")
+		strings.Contains(lower, "fx")) &&
+		!strings.Contains(lower, "synth") &&
+		!strings.Contains(lower, "instrument")
 
-	if isEffect && categoryHint != "instrument" {
-		name := "Warm Tube Stereo Saturator"
-		id := "com.plugfactor.stereo_saturator"
-		if strings.Contains(lower, "tape") {
-			name = "Analog Tape Bus Saturator"
-			id = "com.plugfactor.tape_saturator"
-		} else if strings.Contains(lower, "fuzz") || strings.Contains(lower, "overdrive") {
-			name = "Harmonic Overdrive Exciter"
-			id = "com.plugfactor.harmonic_overdrive"
-		}
+	if isEffect {
+		name, id := deriveNameAndSlug(prompt, "Warm Tube Stereo Saturator", "com.plugfactor.stereo_saturator")
 		return &spec.PluginSpec{
 			Name:        name,
 			ID:          id,
 			Category:    spec.CategoryEffect,
 			Version:     "1.0.0",
-			Description: fmt.Sprintf("Generated from prompt: %q. 2-in/2-out soft-clipping tanh saturator with DC blocker and <= 0.0 dBFS ceiling.", prompt),
+			Description: fmt.Sprintf("Synthesized from prompt: %q. 2-in/2-out soft-clipping tanh saturator with DC blocker and <= 0.0 dBFS ceiling.", prompt),
 			AudioIO: spec.AudioIOSpec{
 				InputChannels:  2,
 				OutputChannels: 2,
@@ -241,7 +296,7 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 					Name:    "Drive",
 					Min:     0.0,
 					Max:     24.0,
-					Default: 8.5,
+					Default: 9.0,
 					Step:    0.1,
 					Unit:    spec.UnitDB,
 					Curve:   spec.CurveLinear,
@@ -274,22 +329,14 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 		}
 	}
 
-	name := "Poly Subtractive Synth"
-	id := "com.plugfactor.subtractive_synth"
-	if strings.Contains(lower, "acid") || strings.Contains(lower, "303") || strings.Contains(lower, "bass") {
-		name = "Acid 303 Resonant Synth"
-		id = "com.plugfactor.acid_synth"
-	} else if strings.Contains(lower, "pad") || strings.Contains(lower, "juno") || strings.Contains(lower, "warm") {
-		name = "Juno Poly Warm Synth"
-		id = "com.plugfactor.warm_polysynth"
-	}
+	name, id := deriveNameAndSlug(prompt, "Poly Subtractive Synth", "com.plugfactor.subtractive_synth")
 
 	return &spec.PluginSpec{
 		Name:        name,
 		ID:          id,
 		Category:    spec.CategoryInstrument,
 		Version:     "1.0.0",
-		Description: fmt.Sprintf("Generated from prompt: %q. 8-voice polyphonic subtractive synthesizer parsing std::midi::Message with SVF filter and ADSR.", prompt),
+		Description: fmt.Sprintf("Synthesized from prompt: %q. 8-voice polyphonic synthesizer parsing std::midi::Message with SVF filter and ADSR envelope.", prompt),
 		AudioIO: spec.AudioIOSpec{
 			InputChannels:  0,
 			OutputChannels: 2,
@@ -304,7 +351,7 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 				Name:    "Filter Cutoff",
 				Min:     20.0,
 				Max:     18000.0,
-				Default: 2400.0,
+				Default: 3200.0,
 				Step:    1.0,
 				Unit:    spec.UnitHz,
 				Curve:   spec.CurveLogarithmic,
@@ -314,47 +361,47 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 				Name:    "Filter Resonance",
 				Min:     1.0,
 				Max:     100.0,
-				Default: 32.0,
+				Default: 28.0,
 				Step:    0.5,
 				Unit:    spec.UnitPercent,
 				Curve:   spec.CurveLinear,
 			},
 			{
 				ID:      "attack",
-				Name:    "Env Attack",
+				Name:    "ADSR Attack",
 				Min:     1.0,
 				Max:     2000.0,
-				Default: 12.0,
+				Default: 15.0,
 				Step:    1.0,
 				Unit:    spec.UnitMs,
 				Curve:   spec.CurveLogarithmic,
 			},
 			{
 				ID:      "decay",
-				Name:    "Env Decay",
+				Name:    "ADSR Decay",
 				Min:     5.0,
 				Max:     4000.0,
-				Default: 320.0,
+				Default: 300.0,
 				Step:    1.0,
 				Unit:    spec.UnitMs,
 				Curve:   spec.CurveLogarithmic,
 			},
 			{
 				ID:      "sustain",
-				Name:    "Env Sustain",
+				Name:    "ADSR Sustain",
 				Min:     0.0,
 				Max:     100.0,
-				Default: 70.0,
+				Default: 75.0,
 				Step:    1.0,
 				Unit:    spec.UnitPercent,
 				Curve:   spec.CurveLinear,
 			},
 			{
 				ID:      "release",
-				Name:    "Env Release",
+				Name:    "ADSR Release",
 				Min:     5.0,
 				Max:     5000.0,
-				Default: 240.0,
+				Default: 280.0,
 				Step:    1.0,
 				Unit:    spec.UnitMs,
 				Curve:   spec.CurveLogarithmic,
@@ -365,7 +412,7 @@ func (e *Engine) architectSpec(prompt, categoryHint string) *spec.PluginSpec {
 			Nodes: []spec.DSPNode{
 				{ID: "mpeConverter", ProcessorType: "std::midi::MPEConverter", Description: "MIDI to MPE NoteOn/NoteOff converter"},
 				{ID: "voiceAllocator", ProcessorType: "std::voices::VoiceAllocator", Voices: 8, Description: "8-voice polyphonic note allocator"},
-				{ID: "voices", ProcessorType: "SynthVoice", Voices: 8, Description: "Polyphonic saw oscillator + Chamberlin SVF + ADSR"},
+				{ID: "voices", ProcessorType: "SynthVoice", Voices: 8, Description: "Polyphonic digital oscillator + Chamberlin SVF + ADSR"},
 				{ID: "masterLimiter", ProcessorType: "MasterSafetyLimiter", Description: "Output limiter enforcing peak <= 0.0 dB"},
 			},
 			Connections: []spec.DSPConnection{
@@ -398,13 +445,19 @@ func (e *Engine) queryNeo4jGrounding(ctx context.Context, category string) ([]Gr
 			rows, qErr := h.Execute(queryCtx, harness.CypherQueryDSPCompatibility, map[string]any{"category": category})
 			if qErr == nil && len(rows) > 0 {
 				var out []GroundedConstraint
+				seen := make(map[string]bool)
 				for _, rec := range rows {
-					out = append(out, GroundedConstraint{
+					c := GroundedConstraint{
 						SourceModule:     fmt.Sprint(rec["sourceModule"]),
 						RequiredStream:   fmt.Sprint(rec["requiredStream"]),
 						ConnectionSyntax: fmt.Sprint(rec["connectionSyntax"]),
 						TargetModule:     fmt.Sprint(rec["targetModule"]),
-					})
+					}
+					key := c.SourceModule + "->" + c.TargetModule
+					if !seen[key] {
+						seen[key] = true
+						out = append(out, c)
+					}
 				}
 				return out, "live_auradb"
 			}

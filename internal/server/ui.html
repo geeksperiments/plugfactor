@@ -92,12 +92,12 @@
 
     main {
       display: grid;
-      grid-template-columns: 1.25fr 0.95fr;
-      gap: 18px;
-      padding: 18px 24px;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 16px;
+      padding: 14px 20px;
       flex: 1;
     }
-    @media (max-width: 1100px) {
+    @media (max-width: 760px) {
       main { grid-template-columns: 1fr; }
     }
     .col {
@@ -390,7 +390,7 @@
           <span style="font-size:11px;color:var(--muted);font-family:var(--mono);">Stage 1 → Stage 5 Autonomous Loop</span>
         </div>
         <div class="prompt-box">
-          <textarea id="prompt-input">Build an 8-voice polyphonic Acid 303 subtractive synth parsing std::midi::Message with resonant SVF lowpass filter and ADSR envelope</textarea>
+          <textarea id="prompt-input" oninput="categoryHint = ''">Build an 8-voice polyphonic Acid 303 subtractive synth parsing std::midi::Message with resonant SVF lowpass filter and ADSR envelope</textarea>
           <div class="presets">
             <span style="font-size:11px;color:var(--muted);">Presets:</span>
             <button class="preset-btn" onclick="setPreset('instrument', 'Build an 8-voice polyphonic Acid 303 subtractive synth parsing std::midi::Message with resonant SVF lowpass filter and ADSR envelope')">🎹 Poly Subtractive Synth (MIDI)</button>
@@ -450,15 +450,18 @@
       <!-- Draggable Patch Chip -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">3. Factory Artifact Export (Drag & Drop to DAW Container)</div>
+          <div class="card-title">3. Factory Artifact Export (Drag & Drop to DAW / CmajPlugin)</div>
           <span id="build-id-badge" style="font-size:11px;font-family:var(--mono);color:var(--muted);">No artifact loaded</span>
         </div>
         <div class="drag-chip" id="patch-chip" draggable="true" ondragstart="onDragPatchStart(event)" onclick="loadCurrentBuildIntoContainer()">
           <div>
-            <div style="font-weight:700;font-size:14px;color:var(--text);" id="chip-title">📦 Ready to Generate .plugfactor Patch Bundle</div>
-            <div style="font-size:11.5px;color:var(--muted);margin-top:3px;" id="chip-sub">Drag this chip into the PlugFactor VST3/AU Container below (or click to hot-swap immediately)</div>
+            <div style="font-weight:700;font-size:14px;color:var(--text);" id="chip-title">📦 Ready to Generate .cmajorpatch Bundle</div>
+            <div style="font-size:11.5px;color:var(--muted);margin-top:3px;" id="chip-sub">Drag into Web Container below, or click "Reveal in Finder" to drag into native CmajPlugin!</div>
           </div>
-          <span style="font-family:var(--mono);font-size:11px;padding:6px 10px;background:#090d14;border-radius:6px;border:1px solid var(--cyan);color:var(--cyan);">DRAG .CMAJPATCH ➔</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="preset-btn" onclick="event.stopPropagation(); revealInFinder()" style="background:#0f172a;border-color:var(--emerald);color:#34d399;font-weight:700;padding:7px 11px;">📂 Reveal .cmajorpatch in Finder (for CmajPlugin)</button>
+            <span style="font-family:var(--mono);font-size:11px;padding:6px 10px;background:#090d14;border-radius:6px;border:1px solid var(--cyan);color:var(--cyan);">DRAG ➔</span>
+          </div>
         </div>
       </div>
 
@@ -559,6 +562,10 @@
         currentBuild = data;
         renderBuildResult(data);
         loadCurrentBuildIntoContainer();
+        const dz = document.getElementById('vst-dropzone');
+        dz.classList.add('drag-over');
+        setTimeout(() => dz.classList.remove('drag-over'), 900);
+        try { triggerNote(261.63); setTimeout(() => triggerNote(329.63), 120); setTimeout(() => triggerNote(392.00), 240); } catch (e) {}
       } catch (err) {
         alert('Build failed: ' + err);
       } finally {
@@ -605,9 +612,9 @@
 
       // Update Draggable Chip
       document.getElementById('chip-title').textContent =
-        `🎹 ${data.spec.name} (${data.spec.id}.plugfactor)`;
+        `🎹 ${data.spec.name} (${data.patch_filename})`;
       document.getElementById('chip-sub').textContent =
-        `Verified in Daytona (peak ${data.daytona_attempts[data.daytona_attempts.length - 1].signal_check.peak_db} dB <= 0.0 dB) • Drag to VST3/AU Container below!`;
+        `Saved to ${data.patch_abs_path} • Click green button to drag into CmajPlugin!`;
 
       showTab(currentTab);
     }
@@ -624,7 +631,18 @@
     function onDragPatchStart(ev) {
       if (!currentBuild) return;
       ev.dataTransfer.setData('application/json', JSON.stringify(currentBuild));
+      if (currentBuild.patch_abs_path) {
+        const fileUrl = 'file://' + currentBuild.patch_abs_path;
+        ev.dataTransfer.setData('text/uri-list', fileUrl);
+        ev.dataTransfer.setData('text/plain', currentBuild.patch_abs_path);
+      }
       ev.dataTransfer.effectAllowed = 'copy';
+    }
+
+    async function revealInFinder() {
+      try {
+        await fetch('/api/reveal', { method: 'POST' });
+      } catch (e) {}
     }
 
     function onVstDragOver(ev) {

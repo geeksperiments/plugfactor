@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"sync"
 
 	"github.com/geeksperiments/plugfactor/internal/pipeline"
@@ -32,6 +33,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/status", s.handleStatus)
 	mux.HandleFunc("/api/build", s.handleBuild)
 	mux.HandleFunc("/api/last-build", s.handleLastBuild)
+	mux.HandleFunc("/api/reveal", s.handleRevealInFinder)
+	mux.HandleFunc("/api/patch", s.handleDownloadPatch)
 	return mux
 }
 
@@ -89,6 +92,38 @@ func (s *Server) handleLastBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.lastBuild)
+}
+
+func (s *Server) handleRevealInFinder(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	last := s.lastBuild
+	s.mu.RUnlock()
+
+	if last == nil || last.PatchAbsPath == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no patch generated yet"})
+		return
+	}
+
+	// Highlight the .cmajorpatch file in macOS Finder so it can be dragged directly into CmajPlugin
+	_ = exec.Command("open", "-R", last.PatchAbsPath).Start()
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status": "revealed",
+		"path":   last.PatchAbsPath,
+	})
+}
+
+func (s *Server) handleDownloadPatch(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	last := s.lastBuild
+	s.mu.RUnlock()
+
+	if last == nil {
+		http.Error(w, "no build available", http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", last.PatchFileName))
+	_, _ = w.Write([]byte(last.CmajPatchJSON))
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
